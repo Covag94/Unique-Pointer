@@ -35,6 +35,14 @@ public:
     {
     }
 
+    UniquePtr &operator=(UniquePtr &&other) noexcept
+    {
+        if(this != &other) {
+            reset(other.release());
+        }
+        return *this;
+    }
+
     // Dereference operator
     [[nodiscard]] T &operator*() const noexcept
     {
@@ -44,12 +52,6 @@ public:
     [[nodiscard]] T *operator->() const noexcept
     {
         return m_ptr;
-    }
-
-    UniquePtr &operator=(UniquePtr &&other) noexcept
-    {
-        swap(other);
-        return *this;
     }
 
 public:
