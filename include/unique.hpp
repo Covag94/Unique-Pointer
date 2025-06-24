@@ -7,6 +7,12 @@ class UniquePtr
 private:
     T *m_ptr;
 
+private:
+    void swap(UniquePtr &other) noexcept
+    {
+        std::swap(m_ptr, other.m_ptr);
+    }
+
 public:
     // Constructor
     // explicit prevents implicit conversions
@@ -20,17 +26,6 @@ public:
         delete m_ptr;
     }
 
-    // Dereference operator
-    T &operator*() const
-    {
-        return *m_ptr;
-    }
-
-    T *operator->() const
-    {
-        return m_ptr;
-    }
-
     // Not copyable
     UniquePtr(const UniquePtr &) = delete;
     UniquePtr &operator=(const UniquePtr &) = delete;
@@ -38,41 +33,41 @@ public:
     // Move semantics
     UniquePtr(UniquePtr &&other) noexcept : m_ptr(std::exchange(other.m_ptr, nullptr))
     {
-        // other.m_ptr = nullptr;
-        std::cout << "Move constructing unique m_ptr..." << std::endl;
+    }
+
+    // Dereference operator
+    [[nodiscard]] T &operator*() const noexcept
+    {
+        return *m_ptr;
+    }
+
+    [[nodiscard]] T *operator->() const noexcept
+    {
+        return m_ptr;
     }
 
     UniquePtr &operator=(UniquePtr &&other) noexcept
     {
-        // Must leave the moved object in valid state
-        if (this != &other)
-        {
-            delete m_ptr;
-            m_ptr = other.m_ptr;
-            other.m_ptr = nullptr;
-        }
+        swap(other);
         return *this;
     }
 
 public:
-    T *get() const noexcept { return m_ptr; }
+    [[nodiscard]] T *get() const noexcept { return m_ptr; }
 
     // Release ownership of raw pointer
     [[nodiscard]] T *release() noexcept
     {
         return std::exchange(m_ptr, nullptr);
     }
+
     // Replace managed object with p
     void reset(T *p = nullptr) noexcept
     {
         T *old = std::exchange(m_ptr, p);
         delete old;
     }
-    // Swap ownership
-    void swap(UniquePtr &other) noexcept
-    {
-        std::swap(m_ptr, other.m_ptr);
-    }
+
     explicit operator bool() const noexcept
     {
         return m_ptr != nullptr;
@@ -99,11 +94,26 @@ public:
 
     friend bool operator==(const UniquePtr &a, std::nullptr_t) noexcept
     {
-        return a == nullptr;
+        return a.get() == nullptr;
     }
 
     friend bool operator==(std::nullptr_t, const UniquePtr &b) noexcept
     {
-        return b == nullptr;
+        return b.get() == nullptr;
+    }
+
+    friend bool operator!=(const UniquePtr &a, const UniquePtr &b) noexcept
+    {
+        return a.get() != b.get();
+    }
+
+    friend bool operator!=(const UniquePtr &a, std::nullptr_t) noexcept
+    {
+        return a.get() != nullptr;
+    }
+
+    friend bool operator!=(std::nullptr_t, const UniquePtr &b) noexcept
+    {
+        return b.get() != nullptr;
     }
 };
