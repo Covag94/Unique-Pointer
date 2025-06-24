@@ -64,6 +64,11 @@ public:
     // Replace managed object with p
     void reset(T *p = nullptr) noexcept
     {
+        if (p == m_ptr)
+        {
+            return;
+        }
+
         T *old = std::exchange(m_ptr, p);
         delete old;
     }
