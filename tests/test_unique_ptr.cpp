@@ -52,7 +52,7 @@ TEST(UniquePtrTest, ResetUniquePtr)
     EXPECT_EQ(*ptr == 20, true);
 
     // Self-reset test
-    //ptr.reset(ptr.get());
+    ptr.reset(ptr.get());
 }
 
 /* swap() : swap the managed objects */
