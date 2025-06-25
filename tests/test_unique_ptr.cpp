@@ -99,14 +99,13 @@ TEST(UniquePtrTest, IndirectionOperatorTest)
     EXPECT_EQ(ptr->foo() == 10, true);
 }
 
-/*TEST(UniquePtrTest, PointerToArrayOfTConstructionAndAccess)
+TEST(UniquePtrTest, PointerToArrayOfTConstructionAndAccess)
 {
     UniquePtr<int[]> p(new int[5]{1, 2, 3, 4, 5});
-    EXPECT_EQ(p == nullptr, true);
 
     EXPECT_EQ(p != nullptr, true);
-    EXPECT_EQ(*p == 1, true);
+    EXPECT_EQ(p[0] == 1, true);
     EXPECT_EQ(p[2] == 3, true);
     p.release();
     EXPECT_EQ(p == nullptr, true);
-}*/
+}
