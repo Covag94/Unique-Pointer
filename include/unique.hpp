@@ -2,28 +2,54 @@
 #include <utility>
 
 template <typename T>
+struct DefaultDeleter
+{
+    void operator()(T *m_ptr) const noexcept
+    {
+        delete m_ptr;
+    }
+};
+
+template <typename T>
+struct DefaultDeleter<T[]>
+{
+    void operator()(T *m_ptr) const noexcept
+    {
+        delete[] m_ptr;
+    }
+};
+
+template <typename T, typename Deleter = DefaultDeleter<T>>
 class UniquePtr
 {
 private:
     T *m_ptr;
+    [[no_unique_address]] Deleter m_deleter;
 
 private:
     void swap(UniquePtr &other) noexcept
     {
         std::swap(m_ptr, other.m_ptr);
+        std::swap(m_deleter, other.m_deleter);
     }
 
 public:
     // Constructor
     // explicit prevents implicit conversions
-    explicit UniquePtr(T *p = nullptr) : m_ptr(p)
+    explicit UniquePtr(T *p = nullptr) : m_ptr(p), m_deleter()
     {
     }
+
+    UniquePtr(T *p, const Deleter &d) : m_ptr(p), m_deleter(d) {}
+    UniquePtr(T *p, Deleter &&d) : m_ptr(p), m_deleter(std::move(d)) {}
 
     // Destructor
     ~UniquePtr()
     {
-        delete m_ptr;
+        if (m_ptr)
+        {
+            m_deleter(m_ptr);
+        }
     }
 
     // Not copyable
@@ -31,7 +57,7 @@ public:
     UniquePtr &operator=(const UniquePtr &) = delete;
 
     // Move semantics
-    UniquePtr(UniquePtr &&other) noexcept : m_ptr(std::exchange(other.m_ptr, nullptr))
+    UniquePtr(UniquePtr &&other) noexcept : m_ptr(std::exchange(other.m_ptr, nullptr)), m_deleter(std::move(other.m_deleter))
     {
     }
 
@@ -40,6 +66,7 @@ public:
         if (this != &other)
         {
             reset(other.release());
+            m_deleter = std::move(other.m_deleter);
         }
         return *this;
     }
@@ -57,6 +84,8 @@ public:
 
 public:
     [[nodiscard]] T *get() const noexcept { return m_ptr; }
+    [[nodiscard]] Deleter& getDeleter() noexcept { return m_deleter; }
+    [[nodiscard]] const Deleter& getDeleter() const noexcept { return m_deleter; }
 
     // Release ownership of raw pointer
     [[nodiscard]] T *release() noexcept
@@ -73,7 +102,10 @@ public:
         }
 
         T *old = std::exchange(m_ptr, p);
-        delete old;
+        if (old)
+        {
+            m_deleter(old);
+        }
     }
 
     explicit operator bool() const noexcept
@@ -126,29 +158,38 @@ public:
     }
 };
 
-template <typename T>
-class UniquePtr<T[]>
+template <typename T, typename Deleter>
+class UniquePtr<T[], Deleter>
 {
 private:
     T *m_ptr;
+    [[no_unique_address]] Deleter m_deleter;
 
 private:
     void swap(UniquePtr &other) noexcept
     {
         std::swap(m_ptr, other.m_ptr);
+        std::swap(m_deleter, other.m_deleter);
     }
 
 public:
     // Constructor
     // explicit prevents implicit conversions
-    explicit UniquePtr(T *p = nullptr) : m_ptr(p)
+    explicit UniquePtr(T *p = nullptr) : m_ptr(p), m_deleter()
     {
     }
+
+    UniquePtr(T *p, const Deleter &d) : m_ptr(p), m_deleter(d) {}
+
+    UniquePtr(T *p, Deleter &&d) : m_ptr(p), m_deleter(std::move(d)) {}
 
     // Destructor
     ~UniquePtr()
     {
-        delete[] m_ptr;
+        if (m_ptr)
+        {
+            m_deleter(m_ptr);
+        }
     }
 
     // Not copyable
@@ -156,7 +197,7 @@ public:
     UniquePtr &operator=(const UniquePtr &) = delete;
 
     // Move semantics
-    UniquePtr(UniquePtr &&other) noexcept : m_ptr(std::exchange(other.m_ptr, nullptr))
+    UniquePtr(UniquePtr &&other) noexcept : m_ptr(std::exchange(other.m_ptr, nullptr)), m_deleter(std::move(other.m_deleter))
     {
     }
 
@@ -165,17 +206,20 @@ public:
         if (this != &other)
         {
             reset(other.release());
+            m_deleter = std::move(other.m_deleter);
         }
         return *this;
     }
 
-    // Dereference operator
+    // Dereference operator - deleter for arrays
     [[nodiscard]] T &operator*() const noexcept = delete;
 
     [[nodiscard]] T *operator->() const noexcept = delete;
 
 public:
     [[nodiscard]] T *get() const noexcept { return m_ptr; }
+    [[nodiscard]] Deleter& getDeleter() noexcept { return m_deleter; }
+    [[nodiscard]] const Deleter& getDeleter() const noexcept { return m_deleter; }
 
     // Release ownership of raw pointer
     [[nodiscard]] T *release() noexcept
@@ -192,7 +236,9 @@ public:
         }
 
         T *old = std::exchange(m_ptr, p);
-        delete[] old;
+        if(old) {
+            m_deleter(old);
+        }
     }
 
     explicit operator bool() const noexcept

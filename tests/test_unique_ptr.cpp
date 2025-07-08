@@ -109,3 +109,83 @@ TEST(UniquePtrTest, PointerToArrayOfTConstructionAndAccess)
     p.release();
     EXPECT_EQ(p == nullptr, true);
 }
+
+struct CustomDeleter
+{
+    bool *flag;
+    CustomDeleter(bool *f) : flag(f) {}
+    void operator()(int *ptr) const
+    {
+        *flag = true;
+        delete ptr;
+    }
+};
+
+TEST(UniquePtrTest, CustomDeleterSingleObject)
+{
+    bool deleter_called = false;
+
+    {
+        UniquePtr<int, CustomDeleter> ptr(new int(42), CustomDeleter(&deleter_called));
+        EXPECT_EQ(*ptr, 42);
+        EXPECT_EQ(deleter_called, false);
+    }
+
+    EXPECT_EQ(deleter_called, true); // should be true after destruction
+}
+
+TEST(UniquePtrTest, CustomDeleterMoveConstructor)
+{
+    bool deleter_called = false;
+
+    UniquePtr<int, CustomDeleter> ptr1(new int(42), CustomDeleter(&deleter_called));
+    UniquePtr<int, CustomDeleter> ptr2(std::move(ptr1));
+
+    EXPECT_EQ(*ptr2, 42);
+    EXPECT_EQ(ptr1.get(), nullptr);
+    EXPECT_EQ(deleter_called, false);
+
+    ptr2.reset();
+    EXPECT_EQ(deleter_called, true);
+}
+
+TEST(UniquePtrTest, CustomDeleterMoveAssignment)
+{
+    bool deleter1_called = false;
+    bool deleter2_called = false;
+
+    UniquePtr<int, CustomDeleter> ptr1(new int(42), CustomDeleter(&deleter1_called));
+    UniquePtr<int, CustomDeleter> ptr2(new int(17), CustomDeleter(&deleter2_called));
+
+    ptr1 = std::move(ptr2);
+
+    EXPECT_EQ(deleter1_called, true);
+    EXPECT_EQ(deleter2_called, false);
+    EXPECT_EQ(*ptr1, 17);
+    EXPECT_EQ(ptr2.get(), nullptr);
+}
+
+TEST(UniquePtrTest, CustomDeleterArray)
+{
+    bool deleter_called = false;
+
+    struct ArrayDeleter
+    {
+        bool *flag;
+        ArrayDeleter(bool *f) : flag(f) {}
+        void operator()(int *ptr) const
+        {
+            *flag = true;
+            delete[] ptr;
+        }
+    };
+
+    {
+        UniquePtr<int[], ArrayDeleter> ptr(new int[5]{1, 2, 3, 4, 5}, ArrayDeleter(&deleter_called));
+        EXPECT_EQ(ptr[0], 1);
+        EXPECT_EQ(ptr[4], 5);
+        EXPECT_EQ(deleter_called, false);
+    }
+
+    EXPECT_EQ(deleter_called, true);
+}
