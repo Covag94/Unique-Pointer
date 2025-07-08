@@ -10,4 +10,5 @@ A lightweight, header-only implementation of a unique ownership smart pointer si
 - **STL-compatible** interface
 - **Header-only** design (zero dependencies)
 - **Debugging-friendly** with move construction logging
+- **Custom Deleters** support
 
